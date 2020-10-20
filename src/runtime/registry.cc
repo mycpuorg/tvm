@@ -51,8 +51,13 @@ struct Registry::Manager {
     // We deliberately leak the Manager instance, to avoid leak sanitizers
     // complaining about the entries in Manager::fmap being leaked at program
     // exit.
+  #ifdef PYTHON_INTEROP_REGISTRY
     static Manager* inst = new Manager();
     return inst;
+  #else
+    std::shared_ptr<Manager> m_inst = std::make_shared<Manager>();
+    return m_inst.get();
+  #endif
   }
 };
 
@@ -68,9 +73,15 @@ Registry& Registry::Register(const std::string& name, bool can_override) {  // N
     CHECK(can_override) << "Global PackedFunc " << name << " is already registered";
   }
 
-  Registry* r = new Registry();
+  Registry* r = nullptr;
+#ifdef PYTHON_INTEROP_REGISTRY
+  r = new Registry();
   r->name_ = name;
   m->fmap[name] = r;
+#else
+  std::shared_ptr<Registry> r_shared = std::make_shared<Registry>();
+  r = r_shared.get();
+#endif
   return *r;
 }
 
